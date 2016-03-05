@@ -13,25 +13,52 @@ class MoviesController < ApplicationController
   def index
     @all_ratings=['G','PG','PG-13','R']
 
-    if params[:ratings]
-      @movies=Movie.where(rating:params[:ratings].keys)
+    redirect=false
+    
+    if params[:sort_by]
+      @sort_by = params[:sort_by]
+      session[:sort_by]=params[:sort_by]
+    elsif session[:sort_by]
+      @sort_by = session[:sort_by]
+      redirect=true
+    else 
+      @sort_by=nil 
     end
-
-
-    case params[:sort_by]
-    when 'title'
-      @title_header='hilite'
-      @movies=Movie.order('title')
-    when 'release_date'
-      @release_date_header='hilite'
-      @movies=Movie.order('release_date')
+    
+    if params[:commit] == "Refresh" and params[:ratings].nil?
+      @ratings=nil
+      session[:ratings]=nil
+      @sort_by=nil
+      session[:sort_by]=nil
+    elsif params[:ratings]
+      @ratings=params[:ratings]
+      session[:ratings]=params[:ratings]
+    elsif session[:ratings]
+      @ratings=session[:ratings]
+      redirect=true
     else
-      if params[:ratings]
-        @movies=Movie.where(rating:params[:ratings].keys)
-      else
-        @movies=Movie.all
-      end
+      @ratings=nil
     end
+
+    if redirect 
+      flash.keep
+      redirect_to movies_path :sort_by=>@sort_by, :ratings=>@ratings
+    end
+
+    if @ratings and @sort_by
+      @movies = Movie.where(:rating => @ratings.keys).order("#{params[:sort_by]} ASC")  # under each rating category, like G, movies can also be sorted by title or release_date
+    elsif @ratings
+      @movies = Movie.where(:rating => @ratings.keys)
+    elsif @sort_by
+      @movies = Movie.order("#{params[:sort_by]} ASC")
+    else
+      @movies= Movie.all
+    end
+
+    if !@ratings 
+      @ratings = Hash.new
+    end
+    
   end
 
 
